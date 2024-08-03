@@ -433,6 +433,30 @@ class DecisionTree:
         dict_list.append(dict_node)
         return self.traverse_explain_path(x, node.right, dict_list)
 
+    def traverse_add_path(self, x, x_index, y, node=None):
+        #traverses the tree starting at node and adds y to the samples in the respective children visited
+        
+        #update the current node:
+        node.sample_indices.append(x_index)
+        node.samples+=1
+        if self.treetype == "classification":
+            node.value=
+            node.gini=
+            if not node.is_leaf_node():
+                node.gain=
+
+            node.clf_value_dis
+            node.clf_prob_dis
+        #update the node_id_dict of the tree:
+        self.node_id_dict
+
+        #traverse the children if any:
+        if not node.is_leaf_node():
+            if x[node.feature] <= node.threshold:
+                return self.traverse_add_path(x, x_index, y, node.left)
+            else:
+                return self.traverse_add_path(x, x_index, y, node.left)
+    
     def explain_decision_path(self, X):
         if isinstance(X, pd.DataFrame):
             X = X.values
