@@ -433,30 +433,53 @@ class DecisionTree:
         dict_list.append(dict_node)
         return self.traverse_explain_path(x, node.right, dict_list)
 
+    #######################################
+    #  Added this function on 10.08.2024  #
+    #######################################
     def traverse_add_path(self, x, x_index, y, node=None):
-        #traverses the tree starting at node and adds y to the samples in the respective children visited
+        if node is None:
+            node = self.root  # Start from the root node if not specified
         
-        #update the current node:
-        node.sample_indices.append(x_index)
-        node.samples+=1
+        # Update the current node's sample indices and sample count
+        node.sample_indices = np.append(node.sample_indices, x_index)  # Add the new sample index
+        node.samples += 1  # Increment the sample count
+
         if self.treetype == "classification":
-            node.value=
-            node.gini=
-            if not node.is_leaf_node():
-                node.gain=
+            # Update the classification-specific attributes
+            counter = Counter(self.y[node.sample_indices])  # Count occurrences of each class
+            node.clf_value_dis = [counter.get(0) or 0, counter.get(1) or 0]  # Update the value distribution
+            node.clf_prob_dis = (np.array(node.clf_value_dis) / node.samples)  # Calculate the probability distribution
+            node.value = np.argmax(node.clf_prob_dis)  # Set the value as the most probable class
+            node.gini = self._gini(self.y[node.sample_indices])  # Recalculate the Gini impurity
 
-            node.clf_value_dis
-            node.clf_prob_dis
-        #update the node_id_dict of the tree:
-        self.node_id_dict
+        elif self.treetype == "regression":
+            # Update the regression-specific attributes
+            node.value = self._mean_label(self.y[node.sample_indices])  # Update the node's value as the mean of y
+            node.gini = self._gini(self.y[node.sample_indices])  # Recalculate the Gini impurity (or use MSE if implemented)
 
-        #traverse the children if any:
+        # Update the tree-wide dictionary with the updated node
+        self.node_id_dict[node.id].update({
+            "samples": node.samples,  # Update the sample count
+            "value": node.value,  # Update the node's value
+            "gini": node.gini,  # Update the node's Gini impurity
+            "sample_indices": node.sample_indices  # Update the sample indices
+        })
+
+        if self.treetype == "classification":
+            self.node_id_dict[node.id].update({
+                "value_distribution": node.clf_value_dis,  # Update the class value distribution
+                "prob_distribution": node.clf_prob_dis  # Update the probability distribution
+            })
+
+        # Traverse the children if the current node is not a leaf node
         if not node.is_leaf_node():
             if x[node.feature] <= node.threshold:
                 return self.traverse_add_path(x, x_index, y, node.left)
             else:
-                return self.traverse_add_path(x, x_index, y, node.left)
-    
+                return self.traverse_add_path(x, x_index, y, node.right)
+
+
+
     def explain_decision_path(self, X):
         if isinstance(X, pd.DataFrame):
             X = X.values
