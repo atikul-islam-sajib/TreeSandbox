@@ -24,6 +24,7 @@ class Node:
         self.samples = samples
         self.leaf_node = leaf_node
         self.sample_indices = sample_indices
+        self.bootstrap_indices = None  # Add attribute to store bootstrap indices
 
     def is_leaf_node(self):
         return self.leaf_node is not False
@@ -55,7 +56,7 @@ class DecisionTree:
         if isinstance(seed, np.random.RandomState):
             return seed
 
-    def fit(self, X, y):
+    def fit(self, X, y, bootstrap=True):
         if not self.n_features:
             self.n_features = X.shape[1]
         elif self.n_features == "sqrt":
@@ -77,7 +78,18 @@ class DecisionTree:
         if isinstance(y, pd.Series):
             y = y.values
 
-        self.root = self._grow_tree(X, y, np.arange(y.shape[0]), feature_names=self.feature_names)
+        # Generate bootstrap sample if required
+        if bootstrap:
+            bootstrap_indices = self.random_state_.choice(np.arange(X.shape[0]), size=X.shape[0], replace=True)
+            self.bootstrap_indices = bootstrap_indices
+            X_bootstrap = X[bootstrap_indices]
+            y_bootstrap = y[bootstrap_indices]
+        else:
+            self.bootstrap_indices = np.arange(X.shape[0])
+            X_bootstrap = X
+            y_bootstrap = y
+
+        self.root = self._grow_tree(X_bootstrap, y_bootstrap, np.arange(y_bootstrap.shape[0]), feature_names=self.feature_names)
         self._get_decision_paths()
         self.node_list = sorted(self.node_list, key=lambda o: o.id)
 
@@ -87,7 +99,6 @@ class DecisionTree:
         depth_list = [len(i) for i in self.decision_paths]
         self.max_depth_ = max(depth_list) - 1
         self._get_feature_importance()
-
 
     def _create_node_dict(self):
         for node in self.node_list:
@@ -436,26 +447,38 @@ class DecisionTree:
     #######################################
     #  Added this function on 10.08.2024  #
     #######################################
-    def traverse_add_path(self, x, x_index, y, node=None):
+    # Here is the modified traverse_add_path method
+
+    def traverse_add_path(self, x, x_index, y_value, node=None):
         if node is None:
             node = self.root  # Start from the root node if not specified
-        
-        # Update the current node's sample indices and sample count
-        node.sample_indices = np.append(node.sample_indices, x_index)  # Add the new sample index
+
+        # Map the incoming x_index to the bootstrap index
+        bootstrap_index = self.bootstrap_indices[x_index]
+
+        # Ensure no duplication of indices
+        if bootstrap_index not in node.sample_indices:
+            node.sample_indices = np.append(node.sample_indices, bootstrap_index)  # Add the new sample index
+
         node.samples += 1  # Increment the sample count
 
+        # Add the label to a node-specific label list
+        if not hasattr(node, 'labels'):
+            node.labels = []
+        node.labels.append(y_value)
+
         if self.treetype == "classification":
-            # Update the classification-specific attributes
-            counter = Counter(self.y[node.sample_indices])  # Count occurrences of each class
+            # Correctly update the classification-specific attributes
+            counter = Counter(node.labels)  # Count occurrences of each class
             node.clf_value_dis = [counter.get(0) or 0, counter.get(1) or 0]  # Update the value distribution
             node.clf_prob_dis = (np.array(node.clf_value_dis) / node.samples)  # Calculate the probability distribution
             node.value = np.argmax(node.clf_prob_dis)  # Set the value as the most probable class
-            node.gini = self._gini(self.y[node.sample_indices])  # Recalculate the Gini impurity
+            node.gini = 1 - sum((np.array(node.clf_prob_dis) ** 2))  # Recalculate the Gini impurity
 
         elif self.treetype == "regression":
             # Update the regression-specific attributes
-            node.value = self._mean_label(self.y[node.sample_indices])  # Update the node's value as the mean of y
-            node.gini = self._gini(self.y[node.sample_indices])  # Recalculate the Gini impurity (or use MSE if implemented)
+            node.value = self._mean_label(node.labels)  # Update the node's value as the mean of y
+            node.gini = np.mean((np.array(node.labels) - node.value) ** 2)  # Recalculate the MSE as the Gini impurity
 
         # Update the tree-wide dictionary with the updated node
         self.node_id_dict[node.id].update({
@@ -474,10 +497,9 @@ class DecisionTree:
         # Traverse the children if the current node is not a leaf node
         if not node.is_leaf_node():
             if x[node.feature] <= node.threshold:
-                return self.traverse_add_path(x, x_index, y, node.left)
+                return self.traverse_add_path(x, x_index, y_value, node.left)
             else:
-                return self.traverse_add_path(x, x_index, y, node.right)
-
+                return self.traverse_add_path(x, x_index, y_value, node.right)
 
 
     def explain_decision_path(self, X):
