@@ -453,8 +453,8 @@ class DecisionTree:
         if node is None:
             node = self.root  # Start from the root node if not specified
 
-        # Map the incoming x_index to the bootstrap index (if needed)
-        bootstrap_index = self.idxs_inbag[x_index]  # Referencing the stored bootstrap indices
+        # Map the incoming x_index to the bootstrap index
+        bootstrap_index = self.idxs_inbag[x_index]
 
         # Ensure no duplication of indices
         if bootstrap_index not in node.sample_indices:
@@ -500,6 +500,7 @@ class DecisionTree:
                 return self.traverse_add_path(x, x_index, y_value, node.left)
             else:
                 return self.traverse_add_path(x, x_index, y_value, node.right)
+
 
 
 
