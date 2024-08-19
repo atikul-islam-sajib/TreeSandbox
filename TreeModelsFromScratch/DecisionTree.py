@@ -454,11 +454,10 @@ class DecisionTree:
             node = self.root  # Start from the root node if not specified
 
         # Map the incoming x_index to the bootstrap index
-        bootstrap_index = self.idxs_inbag[x_index]
+        bootstrap_index = self.bootstrap_indices[x_index]
 
-        # Ensure no duplication of indices
-        if bootstrap_index not in node.sample_indices:
-            node.sample_indices = np.append(node.sample_indices, bootstrap_index)  # Add the new sample index
+        # Add the bootstrap index, allowing duplicates
+        node.sample_indices = np.append(node.sample_indices, bootstrap_index)  # Add the new sample index
 
         node.samples += 1  # Increment the sample count
 
@@ -470,7 +469,7 @@ class DecisionTree:
         if self.treetype == "classification":
             # Correctly update the classification-specific attributes
             counter = Counter(node.labels)  # Count occurrences of each class
-            node.clf_value_dis = [counter.get(0) or 0, counter.get(1) or 0]  # Update the value distribution
+            node.clf_value_dis = [counter.get(0, 0), counter.get(1, 0)]  # Update the value distribution
             node.clf_prob_dis = (np.array(node.clf_value_dis) / node.samples)  # Calculate the probability distribution
             node.value = np.argmax(node.clf_prob_dis)  # Set the value as the most probable class
             node.gini = 1 - sum((np.array(node.clf_prob_dis) ** 2))  # Recalculate the Gini impurity
@@ -500,6 +499,7 @@ class DecisionTree:
                 return self.traverse_add_path(x, x_index, y_value, node.left)
             else:
                 return self.traverse_add_path(x, x_index, y_value, node.right)
+
 
 
 
