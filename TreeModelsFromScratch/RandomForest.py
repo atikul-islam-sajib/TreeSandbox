@@ -202,6 +202,9 @@ class RandomForest:
 
             # Fit tree using inbag samples
             tree.fit(X_inbag, y_inbag)
+            
+            tree.idxs_inbag = idxs_inbag
+            
             self.trees.append(tree) #Add tree to forest
             feature_importance_trees[i, :] = tree.feature_importances_ #add feature importance to array
 

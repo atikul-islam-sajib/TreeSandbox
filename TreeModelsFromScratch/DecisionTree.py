@@ -44,6 +44,7 @@ class DecisionTree:
         self.HShrinkage = HShrinkage
         self.HS_lambda = HS_lambda
         self.random_state = random_state
+        self.idxs_inbag = None
         self.random_state_ = self._check_random_state(random_state)
         self.n_nodes = 0
         self.oob_preds = None
@@ -448,13 +449,12 @@ class DecisionTree:
     #  Added this function on 10.08.2024  #
     #######################################
     # Here is the modified traverse_add_path method
-
     def traverse_add_path(self, x, x_index, y_value, node=None):
         if node is None:
             node = self.root  # Start from the root node if not specified
 
-        # Map the incoming x_index to the bootstrap index
-        bootstrap_index = self.bootstrap_indices[x_index]
+        # Map the incoming x_index to the bootstrap index (if needed)
+        bootstrap_index = self.idxs_inbag[x_index]  # Referencing the stored bootstrap indices
 
         # Ensure no duplication of indices
         if bootstrap_index not in node.sample_indices:
@@ -500,6 +500,8 @@ class DecisionTree:
                 return self.traverse_add_path(x, x_index, y_value, node.left)
             else:
                 return self.traverse_add_path(x, x_index, y_value, node.right)
+
+
 
 
     def explain_decision_path(self, X):

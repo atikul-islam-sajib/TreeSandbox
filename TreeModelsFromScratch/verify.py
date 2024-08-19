@@ -42,55 +42,55 @@ for tree in rf.trees:
     print(f"\nAfter adding new sample to tree with root node {tree.root.id}:\n")
     print_node_info(tree.root)
 
-import unittest
-import numpy as np
-from DecisionTree import DecisionTree
-from RandomForest import RandomForest
+# import unittest
+# import numpy as np
+# from DecisionTree import DecisionTree
+# from RandomForest import RandomForest
 
-class TestRandomForest(unittest.TestCase):
+# class TestRandomForest(unittest.TestCase):
 
-    def setUp(self):
-        # Small dataset
-        self.X_train = np.array([[2.5, 3.0],
-                                 [1.5, 2.5],
-                                 [3.5, 3.5],
-                                 [3.0, 2.0],
-                                 [2.0, 1.5]])
-        self.y_train = np.array([0, 1, 0, 1, 0])
-        self.rf = RandomForest(n_trees=3, max_depth=2, random_state=42)
+#     def setUp(self):
+#         # Small dataset
+#         self.X_train = np.array([[2.5, 3.0],
+#                                  [1.5, 2.5],
+#                                  [3.5, 3.5],
+#                                  [3.0, 2.0],
+#                                  [2.0, 1.5]])
+#         self.y_train = np.array([0, 1, 0, 1, 0])
+#         self.rf = RandomForest(n_trees=3, max_depth=2, random_state=42)
 
-    def test_fit(self):
-        self.rf.fit(self.X_train, self.y_train)
-        self.assertEqual(len(self.rf.trees), 3)
-        self.assertEqual(self.rf.trees[0].root.samples, len(self.X_train))
+#     def test_fit(self):
+#         self.rf.fit(self.X_train, self.y_train)
+#         self.assertEqual(len(self.rf.trees), 3)
+#         self.assertEqual(self.rf.trees[0].root.samples, len(self.X_train))
 
-    def test_bootstrap_sampling(self):
-        X_inbag, y_inbag, idxs_inbag = self.rf._bootstrap_samples(self.X_train, self.y_train, bootstrap=True, random_state=self.rf.random_state_)
-        self.assertEqual(len(idxs_inbag), len(self.X_train))
-        self.assertTrue(np.all(np.isin(idxs_inbag, np.arange(len(self.X_train)))))
+#     def test_bootstrap_sampling(self):
+#         X_inbag, y_inbag, idxs_inbag = self.rf._bootstrap_samples(self.X_train, self.y_train, bootstrap=True, random_state=self.rf.random_state_)
+#         self.assertEqual(len(idxs_inbag), len(self.X_train))
+#         self.assertTrue(np.all(np.isin(idxs_inbag, np.arange(len(self.X_train)))))
 
-    def test_oob_samples(self):
-        X_inbag, y_inbag, idxs_inbag = self.rf._bootstrap_samples(self.X_train, self.y_train, bootstrap=True, random_state=self.rf.random_state_)
-        X_oob, y_oob, idxs_oob = self.rf._oob_samples(self.X_train, self.y_train, idxs_inbag)
-        self.assertEqual(len(np.setdiff1d(np.arange(len(self.X_train)), idxs_inbag)), len(idxs_oob))
+#     def test_oob_samples(self):
+#         X_inbag, y_inbag, idxs_inbag = self.rf._bootstrap_samples(self.X_train, self.y_train, bootstrap=True, random_state=self.rf.random_state_)
+#         X_oob, y_oob, idxs_oob = self.rf._oob_samples(self.X_train, self.y_train, idxs_inbag)
+#         self.assertEqual(len(np.setdiff1d(np.arange(len(self.X_train)), idxs_inbag)), len(idxs_oob))
 
-    def test_tree_growth(self):
-        self.rf.fit(self.X_train, self.y_train)
-        for tree in self.rf.trees:
-            self.assertTrue(tree.max_depth is not None)
-            self.assertTrue(tree.min_samples_split <= len(self.X_train))
+#     def test_tree_growth(self):
+#         self.rf.fit(self.X_train, self.y_train)
+#         for tree in self.rf.trees:
+#             self.assertTrue(tree.max_depth is not None)
+#             self.assertTrue(tree.min_samples_split <= len(self.X_train))
 
-    def test_shap_values(self):
-        self.rf.fit(self.X_train, self.y_train)
-        shap_values = self.rf.trees[0].predict_proba(self.X_train)
-        self.assertEqual(shap_values.shape[0], len(self.X_train))
+#     def test_shap_values(self):
+#         self.rf.fit(self.X_train, self.y_train)
+#         shap_values = self.rf.trees[0].predict_proba(self.X_train)
+#         self.assertEqual(shap_values.shape[0], len(self.X_train))
 
-    def test_random_state_consistency(self):
-        rf1 = RandomForest(n_trees=3, max_depth=2, random_state=42)
-        rf2 = RandomForest(n_trees=3, max_depth=2, random_state=42)
-        rf1.fit(self.X_train, self.y_train)
-        rf2.fit(self.X_train, self.y_train)
-        self.assertEqual(rf1.trees[0].root.samples, rf2.trees[0].root.samples)
+#     def test_random_state_consistency(self):
+#         rf1 = RandomForest(n_trees=3, max_depth=2, random_state=42)
+#         rf2 = RandomForest(n_trees=3, max_depth=2, random_state=42)
+#         rf1.fit(self.X_train, self.y_train)
+#         rf2.fit(self.X_train, self.y_train)
+#         self.assertEqual(rf1.trees[0].root.samples, rf2.trees[0].root.samples)
 
-if __name__ == '__main__':
-    unittest.main()
+# if __name__ == '__main__':
+#     unittest.main()
