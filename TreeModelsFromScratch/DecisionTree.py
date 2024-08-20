@@ -454,19 +454,21 @@ class DecisionTree:
             node = self.root  # Start from the root node if not specified
 
         # Map the incoming x_index to the bootstrap index
-        bootstrap_index = self.idxs_inbag[x_index]
+        bootstrap_index = self.bootstrap_indices[x_index]
 
-        # Add the incoming bootstrap index to the node's sample indices
-        if bootstrap_index not in node.sample_indices:
-            node.sample_indices = np.append(node.sample_indices, bootstrap_index)
+        # Always append the bootstrap index, even if it's a duplicate
+        node.sample_indices = np.append(node.sample_indices, bootstrap_index)
 
         node.samples += 1  # Increment the sample count
 
-        # Use self.y and sample_indices (including idxs_inbag) to gather all labels for this node
-        all_labels = self.y[node.sample_indices]  # Fetch all labels based on the stored indices
-
-        # Update the node's labels
-        node.labels = list(all_labels)
+        # Initialize the labels list if it doesn't exist, including all labels from the training phase
+        if not hasattr(node, 'labels'):
+            node.labels = self.y[node.sample_indices].tolist()  # Initialize with existing labels based on sample_indices
+        else:
+            # Ensure that the labels list reflects the current sample indices
+            node.labels = self.y[node.sample_indices].tolist()
+            
+        node.labels.append(y_value)  # Add the new label
 
         if self.treetype == "classification":
             # Correctly update the classification-specific attributes
@@ -478,7 +480,7 @@ class DecisionTree:
 
         elif self.treetype == "regression":
             # Update the regression-specific attributes
-            node.value = np.mean(node.labels)  # Update the node's value as the mean of y
+            node.value = self._mean_label(node.labels)  # Update the node's value as the mean of y
             node.gini = np.mean((np.array(node.labels) - node.value) ** 2)  # Recalculate the MSE as the Gini impurity
 
         # Update the tree-wide dictionary with the updated node
@@ -501,6 +503,7 @@ class DecisionTree:
                 return self.traverse_add_path(x, x_index, y_value, node.left)
             else:
                 return self.traverse_add_path(x, x_index, y_value, node.right)
+
 
 
 
