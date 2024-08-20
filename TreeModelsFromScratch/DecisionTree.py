@@ -456,7 +456,7 @@ class DecisionTree:
         # Get the bootstrap index for the current sample
         bootstrap_index = self.idxs_inbag[x_index]
 
-        # Ensure the bootstrap index is added to the node's sample_indices
+        # Ensure the bootstrap index is added to the node's sample_indices without duplicates
         if bootstrap_index not in node.sample_indices:
             node.sample_indices = np.append(node.sample_indices, bootstrap_index)
 
@@ -464,23 +464,23 @@ class DecisionTree:
 
         # Initialize labels if not already done during tree training
         if not hasattr(node, 'labels'):
-            node.labels = self.y[node.sample_indices]  # Initialize with existing labels from training
+            node.labels = list(self.y[node.sample_indices])  # Initialize with existing labels from training
 
-        # Append the new y_value to the labels
-        node.labels = np.append(node.labels, y_value)
+        # Append the new y_value to the labels, preserving the history
+        node.labels.append(y_value)
 
         # Update classification-specific attributes
         if self.treetype == "classification":
             counter = Counter(node.labels)  # Count occurrences of each class
             node.clf_value_dis = [counter.get(0, 0), counter.get(1, 0)]  # Update the value distribution
-            node.clf_prob_dis = np.array(node.clf_value_dis) / node.samples  # Calculate the probability distribution
+            node.clf_prob_dis = np.array(node.clf_value_dis) / sum(node.clf_value_dis)  # Calculate the probability distribution
             node.value = np.argmax(node.clf_prob_dis)  # Set the value as the most probable class
             node.gini = 1 - sum(node.clf_prob_dis ** 2)  # Recalculate the Gini impurity
 
         elif self.treetype == "regression":
             # Update the regression-specific attributes
             node.value = np.mean(node.labels)  # Update the node's value as the mean of y
-            node.gini = np.mean((node.labels - node.value) ** 2)  # Recalculate the MSE as the Gini impurity
+            node.gini = np.mean((np.array(node.labels) - node.value) ** 2)  # Recalculate the MSE as the Gini impurity
 
         # Update the tree-wide dictionary with the updated node
         self.node_id_dict[node.id].update({
@@ -503,6 +503,7 @@ class DecisionTree:
                 return self.traverse_add_path(x, x_index, y_value, node.left)
             else:
                 return self.traverse_add_path(x, x_index, y_value, node.right)
+
 
 
 
