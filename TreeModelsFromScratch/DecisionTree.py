@@ -453,48 +453,46 @@ class DecisionTree:
         if node is None:
             node = self.root  # Start from the root node if not specified
 
-        # Map the incoming x_index to the bootstrap index
-        bootstrap_index = self.bootstrap_indices[x_index]
+        # Get the actual index from the bootstrapped indices used during training
+        bootstrap_index = self.idxs_inbag[x_index]
 
-        # Always append the bootstrap index, even if it's a duplicate
+        # Ensure the sample index is added correctly
         node.sample_indices = np.append(node.sample_indices, bootstrap_index)
 
-        node.samples += 1  # Increment the sample count
+        # Increment the sample count
+        node.samples += 1
 
-        # Initialize the labels list if it doesn't exist, including all labels from the training phase
+        # Preserve and update the node's labels with the labels from training plus the new label
         if not hasattr(node, 'labels'):
-            node.labels = self.y[node.sample_indices].tolist()  # Initialize with existing labels based on sample_indices
+            node.labels = [self.y[idx] for idx in node.sample_indices]
         else:
-            # Ensure that the labels list reflects the current sample indices
-            node.labels = self.y[node.sample_indices].tolist()
-            
-        node.labels.append(y_value)  # Add the new label
+            # Add the new label to the existing labels
+            node.labels.append(self.y[bootstrap_index])
 
         if self.treetype == "classification":
-            # Correctly update the classification-specific attributes
-            counter = Counter(node.labels)  # Count occurrences of each class
-            node.clf_value_dis = [counter.get(0) or 0, counter.get(1) or 0]  # Update the value distribution
-            node.clf_prob_dis = (np.array(node.clf_value_dis) / node.samples)  # Calculate the probability distribution
-            node.value = np.argmax(node.clf_prob_dis)  # Set the value as the most probable class
-            node.gini = 1 - sum((np.array(node.clf_prob_dis) ** 2))  # Recalculate the Gini impurity
+            # Update the class value distribution and probability distribution
+            counter = Counter(node.labels)
+            node.clf_value_dis = [counter.get(0, 0), counter.get(1, 0)]
+            node.clf_prob_dis = np.array(node.clf_value_dis) / node.samples
+            node.value = np.argmax(node.clf_prob_dis)
+            node.gini = 1 - np.sum(np.square(node.clf_prob_dis))  # Correct Gini calculation
 
         elif self.treetype == "regression":
-            # Update the regression-specific attributes
-            node.value = self._mean_label(node.labels)  # Update the node's value as the mean of y
-            node.gini = np.mean((np.array(node.labels) - node.value) ** 2)  # Recalculate the MSE as the Gini impurity
+            node.value = np.mean(node.labels)
+            node.gini = np.mean((np.array(node.labels) - node.value) ** 2)  # Recalculate the MSE as the "Gini impurity"
 
         # Update the tree-wide dictionary with the updated node
         self.node_id_dict[node.id].update({
-            "samples": node.samples,  # Update the sample count
-            "value": node.value,  # Update the node's value
-            "gini": node.gini,  # Update the node's Gini impurity
-            "sample_indices": node.sample_indices  # Update the sample indices
+            "samples": node.samples,
+            "value": node.value,
+            "gini": node.gini,
+            "sample_indices": node.sample_indices
         })
 
         if self.treetype == "classification":
             self.node_id_dict[node.id].update({
-                "value_distribution": node.clf_value_dis,  # Update the class value distribution
-                "prob_distribution": node.clf_prob_dis  # Update the probability distribution
+                "value_distribution": node.clf_value_dis,
+                "prob_distribution": node.clf_prob_dis
             })
 
         # Traverse the children if the current node is not a leaf node
@@ -503,6 +501,13 @@ class DecisionTree:
                 return self.traverse_add_path(x, x_index, y_value, node.left)
             else:
                 return self.traverse_add_path(x, x_index, y_value, node.right)
+
+
+
+
+
+
+
 
 
 
