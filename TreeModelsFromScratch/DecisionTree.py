@@ -453,56 +453,38 @@ class DecisionTree:
         if node is None:
             node = self.root  # Start from the root node if not specified
 
-        # Get the bootstrap index for the current sample
+        # Use the inbag index directly
         bootstrap_index = self.idxs_inbag[x_index]
 
-        # Ensure the bootstrap index is added to the node's sample_indices without duplicates
-        if bootstrap_index not in node.sample_indices:
-            node.sample_indices = np.append(node.sample_indices, bootstrap_index)
+        # Ensure that sample indices include duplicates
+        node.sample_indices = np.append(node.sample_indices, bootstrap_index)
 
-        node.samples += 1  # Increment the sample count
+        # Update the sample count
+        node.samples += 1
 
-        # Initialize labels if not already done during tree training
-        if not hasattr(node, 'labels'):
-            node.labels = list(self.y[node.sample_indices])  # Initialize with existing labels from training
+        # Ensure node.labels retains all previous labels
+        node.labels = self.y[node.sample_indices]
 
-        # Append the new y_value to the labels, preserving the history
-        node.labels.append(y_value)
-
-        # Update classification-specific attributes
         if self.treetype == "classification":
-            counter = Counter(node.labels)  # Count occurrences of each class
-            node.clf_value_dis = [counter.get(0, 0), counter.get(1, 0)]  # Update the value distribution
-            node.clf_prob_dis = np.array(node.clf_value_dis) / sum(node.clf_value_dis)  # Calculate the probability distribution
-            node.value = np.argmax(node.clf_prob_dis)  # Set the value as the most probable class
-            node.gini = 1 - sum(node.clf_prob_dis ** 2)  # Recalculate the Gini impurity
+            # Correctly update the classification-specific attributes
+            counter = Counter(node.labels)
+            node.clf_value_dis = [counter.get(0, 0), counter.get(1, 0)]
+            node.clf_prob_dis = np.array(node.clf_value_dis) / node.samples
+            node.value = np.argmax(node.clf_prob_dis)
+            node.gini = 1 - sum(node.clf_prob_dis ** 2)
 
         elif self.treetype == "regression":
-            # Update the regression-specific attributes
-            node.value = np.mean(node.labels)  # Update the node's value as the mean of y
-            node.gini = np.mean((np.array(node.labels) - node.value) ** 2)  # Recalculate the MSE as the Gini impurity
+            # Update regression-specific attributes
+            node.value = np.mean(node.labels)
+            node.gini = np.mean((node.labels - node.value) ** 2)
 
-        # Update the tree-wide dictionary with the updated node
-        self.node_id_dict[node.id].update({
-            "samples": node.samples,  # Update the sample count
-            "value": node.value,  # Update the node's value
-            "gini": node.gini,  # Update the node's Gini impurity
-            "sample_indices": node.sample_indices,  # Update the sample indices
-            "labels": node.labels  # Store the updated labels
-        })
-
-        if self.treetype == "classification":
-            self.node_id_dict[node.id].update({
-                "value_distribution": node.clf_value_dis,  # Update the class value distribution
-                "prob_distribution": node.clf_prob_dis  # Update the probability distribution
-            })
-
-        # Traverse the children if the current node is not a leaf node
+        # Traverse children if the node is not a leaf
         if not node.is_leaf_node():
             if x[node.feature] <= node.threshold:
                 return self.traverse_add_path(x, x_index, y_value, node.left)
             else:
                 return self.traverse_add_path(x, x_index, y_value, node.right)
+
 
 
 
